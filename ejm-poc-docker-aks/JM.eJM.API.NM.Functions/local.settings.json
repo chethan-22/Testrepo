@@ -1,0 +1,12 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    "ConnectionStrings": "Server=tcp:sql-svr-dev-ejm-001.database.windows.net,1433;Initial Catalog=sql-db-dev-ejm-001;Persist Security Info=False;User ID=readonlyazure;Password=Extract1!;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;",
+    "TIME_OUT": "180"
+  },
+  "Host": {
+    "LocalHttpPort": 7072
+  }
+}

@@ -1,0 +1,69 @@
+name: 'Create sql_server'
+
+on:
+  repository_dispatch:
+    types: [create-sql-server]
+
+  
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  terraform:
+    name: 'Create sql_server'
+    runs-on: ubuntu-latest
+    environment: oidc
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: SQL-Server-Creation/Scripts
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    # Login to azure
+    - name: Login to Azure
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.CLIENT_ID}}  
+        tenant-id: ${{ secrets.TENANT_ID}}
+        subscription-id: ${{ github.event.client_payload.subscription_id}}
+        enable-AzPSSession: true
+
+    # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+      with:
+        terraform_version: 1.6.4
+        terraform_wrapper: false
+
+    # Initialize a new or existing Terraform working directory by creating initial files, loading any remote state, downloading modules, etc.
+    - name: Terraform Init
+      run: terraform init
+
+    # This displays the variables that have been parsed into Github actions for Terraform to use. You can see them under the job run details in Github actions. This sections isnt required for this script to run. It is for troubleshooting.
+    - name: echo input
+      run: |
+        echo "${{ toJSON(github.event.client_payload) }}"
+
+      
+    # Parses the variables that Terraform will use into a terraform.tfvars file that runs on the temporary VM.
+    - name: tfvars_file
+      run: |
+        echo '${{ toJSON(github.event.client_payload.variables) }}' > terraform.tfvars.json 
+        cat terraform.tfvars.json
+
+        
+      # Generates an execution plan for Terraform
+    - name: Terraform Plan
+      #run: terraform plan -out=tfplan.bin --var-file=variables.tfvars -input=false
+      run: terraform plan -out=tfplan.bin
+
+      # On push to "main", build or change infrastructure according to Terraform configuration files
+    - name: Terraform Apply
+      run: terraform apply -auto-approve 'tfplan.bin'

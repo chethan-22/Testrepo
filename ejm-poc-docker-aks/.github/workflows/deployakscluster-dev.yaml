@@ -1,0 +1,81 @@
+name: Deploy AKS Cluster with Terraform
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop
+env:
+  ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+  ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+  ARM_SUBSCRIPTION_ID: 029536b6-f6c6-4f73-af5f-565d7c4cc579
+  ARM_TENANT_ID: cc7f83dd-bc5a-4682-9b3e-062a900202a2
+  Terraform-RG-SUFFIX: Dev
+  Terraform-RG: "RG-DEV-EU-EJM-002"
+  CLUSTER_NAME: "my-aks-cluster"
+
+jobs:
+  deploy-aks-cluster:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform/
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cschleiden/replace-tokens@v1
+        with:
+          files: '["**/*.tf*"]'
+        env: #Below environment variables will be used in terraform scripts. So changing them will update the azure resource.
+          Environment-Name: dev
+          Resource_Group_Name: ${{ env.Terraform-RG }}
+          Environment-Name-Suffix: ${{ env.Terraform-RG-SUFFIX }}
+          Region-Short: "eu"
+          Project-Name: "ejm"
+          Resource-Suffix: "001"
+          Location: "northeurope"
+          Tf_Storage_Name: "stadevejmtf002"
+          Tenant_Id: ${{ env.ARM_TENANT_ID }}
+          Subscription_Id: ${{ env.ARM_SUBSCRIPTION_ID }}
+          Create_Resource_Group: "false"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.3.6
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Format
+        run: terraform fmt -check
+
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan.bin --var-file=variables.tfvars -input=false
+
+      - name: Terraform Apply
+        run: terraform apply --auto-approve
+
+      # - name: Install kubectl
+      #   run: >
+      #     sudo apt-get update && \
+
+      #     sudo apt-get install -y apt-transport-https && \
+
+      #     curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo
+      #     apt-key add - && \
+
+      #     echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" | sudo
+      #     tee /etc/apt/sources.list.d/kubernetes.list && \
+
+      #     sudo apt-get update && \
+
+      #     sudo apt-get install -y kubectl
+      # - name: Get AKS credentials
+      #   uses: azure/aks-get-credentials@v1
+      #   with:
+      #     creds: '${{ secrets.AZURE_CREDENTIALS }}'
+      #     resource-group: <Your Resource Group Name>
+      #     cluster-name: <Your AKS Cluster Name>
+      # - name: Deploy application
+      #   run: |
+      #     kubectl apply -f <Your Kubernetes YAML File>

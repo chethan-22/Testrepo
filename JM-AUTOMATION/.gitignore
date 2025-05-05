@@ -1,0 +1,8 @@
+RG-Creation-Process/Scripts/terraform.tfstate
+RG-Creation-Process/Scripts/.terraform/providers/registry.terraform.io/hashicorp/azurerm/3.95.0/windows_amd64/terraform-provider-azurerm_v3.95.0_x5.exe
+AppReg-Creation-Process/Scripts/.terraform.lock.hcl
+AppReg-Creation-Process/Scripts/terraform.tfstate
+AppReg-Creation-Process/Scripts/terraform.tfstate.backup
+AppReg-Creation-Process/Scripts/.terraform/providers/registry.terraform.io/hashicorp/azuread/2.47.0/windows_amd64/terraform-provider-azuread_v2.47.0_x5.exe
+AppReg-Creation-Process/Scripts/.terraform/providers/registry.terraform.io/hashicorp/azurerm/3.95.0/windows_amd64/terraform-provider-azurerm_v3.95.0_x5.exe
+AppReg-Creation-Process/Scripts/.terraform/providers/registry.terraform.io/hashicorp/azurerm/3.96.0/windows_amd64/terraform-provider-azurerm_v3.96.0_x5.exe

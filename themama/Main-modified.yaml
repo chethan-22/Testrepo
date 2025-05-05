@@ -1,0 +1,109 @@
+name: Monorepo CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+      - release/*
+  workflow_call:
+    inputs:
+      environment:
+        type: string
+        description: 'Environment we should deploy to'
+        required: true
+      baseBranch:
+        type: string
+        description: 'Base branch used for evaluating affected modules by changes in current branch'
+        required: false
+        default: 'master'
+      deploy:
+        type: boolean
+        description: 'Should we deploy published packages'
+        required: false
+        default: true
+      packages:
+        description: 'Names of released packages (artefacts should be available to download)'
+        type: string
+        required: false
+
+concurrency:
+  group: '${{ github.workflow }} @ ${{ github.event.pull_request.head.label || github.head_ref || github.ref }}'
+  cancel-in-progress: ${{ !contains(github.ref, 'release/') && !(github.ref == format('refs/heads/{0}', 'master')) }}
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: ripper-light-nodejs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/utils-node-setup
+      - name: Complies with branch rules
+        if: ${{ github.EVENT_NAME == 'pull_request' }}
+        uses: ./.github/actions/compliance-check
+        id: compliance-check
+        with:
+          event: ${{ github.EVENT_NAME }}
+          branch: ${{ github.REF_NAME }}
+          from-branch: ${{ github.HEAD_REF }}
+          to-branch: ${{ github.BASE_REF }}
+
+  lint:
+    runs-on: ripper-heavy-nodejs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/node-setup
+        with:
+          baseBranch: ${{ inputs.baseBranch || github.BASE_REF || github.REF_NAME }}
+      - name: Lints without problems
+        uses: ./.github/actions/lint-affected
+        id: lint-affected
+
+  test:
+    runs-on: ripper-heavy-nodejs
+    needs: [verify, lint]
+    strategy:
+      fail-fast: true
+      max-parallel: 5
+      matrix:
+        shard: [1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/node-setup
+        with:
+          baseBranch: ${{ inputs.baseBranch || github.BASE_REF || github.REF_NAME }}
+      - name: Tests passed
+        uses: ./.github/actions/test-affected
+        with:
+          shard: ${{ matrix.shard }}/${{ strategy.job-total }}
+        id: test-affected
+
+  build:
+    runs-on: ripper-heavy-nodejs
+    needs: [verify, lint]
+    outputs:
+      packages: ${{ steps.build-affected.outputs.packages }}
+      count: ${{ steps.build-affected.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/node-setup
+        with:
+          baseBranch: ${{ inputs.baseBranch || github.BASE_REF || github.REF_NAME }}
+      - name: Builds without problems
+        uses: ./.github/actions/build-affected
+        id: build-affected
+      - name: Archive build artifacts
+        if: ${{ steps.build-affected.outputs.count > 0 && github.EVENT_NAME != 'pull_request' }}
+        uses: ./.github/actions/persist-local-cache-dir
+        with:
+          repo:

@@ -1,0 +1,16 @@
+{
+    "project": "some name e.g PUR, AIM, CT etc",
+    "requestnumber": "",
+    "environment": "dev/test/uat/prod/sbx",
+    "github": {
+        "federated": true,
+        "environment": "dev or test or acc or prd",
+        "repo": "JM-AUTOMATION"
+    },
+    "rbac": {
+        "enabled": true,
+        "roles": "comma separated list of roles",
+        "scopes": "Comma separated list of RGs"
+    },
+    "email": "email of the person raising request"
+}

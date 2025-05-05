@@ -1,0 +1,29 @@
+name: Push Docker image
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - develop1  ## will remove it later
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_REGISTRY_NAME }}.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PWD }}
+
+      - name: Build the Docker image
+        run: docker build . --file dockerfile --tag ejmapinmfunctionservice:latest
+
+      - name: Push Docker image to Azure Container Registry
+        run: |
+          docker tag ejmapinmfunctionservice:latest ${{ secrets.ACR_REGISTRY_NAME }}.azurecr.io/ejmapinmfunctionservice:v1
+          docker push ${{ secrets.ACR_REGISTRY_NAME }}.azurecr.io/ejmapinmfunctionservice:v1

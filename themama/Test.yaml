@@ -1,0 +1,125 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: 'ci-cd-pipeline'
+  cancel-in-progress: false
+
+jobs:
+  process:
+    name: Process
+    runs-on: ripper-light-nodejs
+    secrets: inherit
+    with:
+      environment: Integration
+      baseBranch: ${{ github.REF_NAME }}
+
+  verify:
+    name: Verify
+    runs-on: ripper-light-nodejs
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/utils-node-setup
+      - name: Complies with branch rules
+        if: ${{ github.EVENT_NAME == 'pull_request'}}
+        uses: ./.github/actions/compliance-check
+        id: compliance-check
+        with:
+          event: ${{ github.EVENT_NAME }}
+          branch: ${{ github.REF_NAME }}
+          from-branch: ${{ github.HEAD_REF }}
+          to-branch: ${{ github.BASE_REF }}
+      - name: Lints without problems
+        uses: ./.github/actions/lint-affected
+        id: lint-affected
+      - name: Tests passed
+        uses: ./.github/actions/test-affected
+        id: test-affected
+      - name: Builds without problems
+        uses: ./.github/actions/build-affected
+        id: build-affected
+      - name: Archive build artifacts
+        if: ${{ steps.build-affected.outputs.count > 0 && github.EVENT_NAME != 'pull_request' }}
+        uses: ./.github/actions/persist-local-cache-dir
+        with:
+          repo: build-artefacts/run-${{ github.run_id }}
+          path: ./dist/apps
+
+  publish:
+    name: Publish
+    needs: [verify]
+    if: ${{ needs.verify.outputs.build-count > 0 }}
+    runs-on: ripper-light-nodejs
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 25
+      matrix:
+        package: ${{ fromJSON(needs.verify.outputs.build-packages) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/utils-node-setup
+      - uses: ./.github/actions/restore-local-cache
+        id: restore-build-artefact
+        with:
+          repo: build-artefacts/run-${{ github.run_id }}
+          path: ./artefacts
+          key: ${{ matrix.package }}
+      - name: Update package versions
+        id: update-version
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { PACKAGE, BRANCH_NAME, OWNER, PACKAGE_PATH} = process.env;
+            const {updatePackageVersion} = require('./tools/ci/utils.js');
+            const {version} = await updatePackageVersion(PACKAGE, PACKAGE_PATH, BRANCH_NAME, OWNER);
+            core.setOutput('version', version);
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ github.REF_NAME }}
+          OWNER: ${{ github.REPOSITORY_OWNER }}
+          PACKAGE: ${{ matrix.package }}
+          PACKAGE_PATH: ${{ format('artefacts/{0}', matrix.package ) }}
+      - name: Update package scripts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { PACKAGE, PACKAGE_PATH} = process.env;
+            const {updatePackageScript} = require('./tools/ci/utils.js');
+            await updatePackageScript(PACKAGE, PACKAGE_PATH);
+        env:
+          PACKAGE: ${{ matrix.package }}
+          PACKAGE_PATH: ${{ format('artefacts/{0}', matrix.package ) }}
+      - name: Set npmrc
+        run: |
+          cd $PACKAGE_PATH
+          echo "registry = http://rh0113p.theaa.local:7071/nexus/content/groups/aah2-live-group/" > .npmrc
+        shell: bash
+        env:
+          PACKAGE_PATH: ${{ format('artefacts/{0}', matrix.package ) }}
+      - uses: ./.github/actions/node-setup
+        with:
+          install-deps: false
+          registry-url: https://npm.pkg.github.com/
+      - name: Backup package lock
+        run: |
+          cd $PACKAGE_PATH
+          cp package-lock.json package-lock.bkp
+        shell: bash
+        env:
+          PACKAGE_PATH: ${{ format('artefacts/{0}', matrix.package ) }}
+      - name: Publish package
+        run: |
+          cd $PACKAGE_PATH
+          npm publish
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN

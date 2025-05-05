@@ -1,0 +1,14 @@
+{
+  "version": "2.0",
+  "Logging": {
+    "LogLevel": {
+      "JM.eJM.API.NM.Services.Service": "Information"
+    }
+  },
+  "applicationInsights": {
+    "samplingSettings": {
+      "isEnabled": true,
+      "excludedTypes": "Request"
+    }
+  }
+}

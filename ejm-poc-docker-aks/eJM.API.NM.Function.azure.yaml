@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ejm-nmapp
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ejm-nmapp
+  template:
+    metadata:
+      labels:
+        app: ejm-nmapp
+    spec:
+      containers:
+        - name: ejm-container
+          image: ejmacr.azurecr.io/ejmapinmfunctionservice:v1
+          ports:
+            - containerPort: 8501
+          env:
+            - name: FUNCTIONS_WORKER_RUNTIME
+              value: "dotnet"
+            - name: ConnectionStrings
+              value: "Server=tcp:sql-svr-dev-ejm-001.database.windows.net,1433;Initial Catalog=sql-db-dev-ejm-001;Persist Security Info=False;User ID=readonlyazure;Password=Extract1!;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+            - name: TIME_OUT
+              value: "180" 
+      imagePullSecrets:
+        - name: myregistry-creds
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ejm-nmapp-service
+spec:
+  selector:
+    app: ejm-nmapp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer

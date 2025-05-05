@@ -1,0 +1,115 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ejm-ingress
+  namespace: containerpoc
+  annotations:
+     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+     nginx.ingress.kubernetes.io/use-regex: "true"
+     nginx.ingress.kubernetes.io/rewrite-target: /api/AccountBalance?account
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /account
+        pathType: Prefix
+        backend:
+          service:
+            name: ejm-accountbalancenm-service
+            port:
+              number: 80
+      - path: /account/balanceref
+        pathType: Prefix
+        backend:
+          service:
+            name: ejm-accountbalanceref-service
+            port:
+              number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ejm-transaction-ingress
+  namespace: containerpoc
+  annotations:
+     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+     nginx.ingress.kubernetes.io/use-regex: "true"
+     nginx.ingress.kubernetes.io/rewrite-target: /api/Transactions?accounts&startdate&enddate&metaltype
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:       
+      - path: /transaction/transactionschm
+        pathType: Prefix
+        backend:
+          service:
+            name: ejm-transactionschm-service
+            port:
+              number: 80
+      - path: /transaction/transactionsnm
+        pathType: Prefix
+        backend:
+          service:
+            name: ejm-transactionsnm-service
+            port:
+              number: 80
+      - path: /transaction/transactionspmm
+        pathType: Prefix
+        backend:
+          service:
+            name: ejm-transactionspmm-service
+            port:
+              number: 80
+      - path: /transaction/transactionsref
+        pathType: Prefix
+        backend:
+          service:
+            name: ejm-transactionsref-service
+            port:
+              number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ejm-refining-ingress
+  namespace: containerpoc
+  annotations:
+     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+     nginx.ingress.kubernetes.io/use-regex: "true"
+     nginx.ingress.kubernetes.io/rewrite-target: /api/Refining?account
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:       
+      - path: /refining
+        pathType: Prefix
+        backend:
+          service: 
+            name: ejm-jobsref-service
+            port:
+              number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ejm-refiningdetail-ingress
+  namespace: containerpoc
+  annotations:
+     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+     nginx.ingress.kubernetes.io/use-regex: "true"
+     nginx.ingress.kubernetes.io/rewrite-target: /api/RefiningDetail?CustRefNum&JMRef&DateReceived&account
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:       
+      - path: /refiningdetail
+        pathType: Prefix
+        backend:
+          service: 
+            name: ejm-jobsref-service
+            port:
+              number: 80
